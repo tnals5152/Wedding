@@ -1,0 +1,292 @@
+<meta charset="utf-8">
+<html>
+    <head>
+    <title>Wedding</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .flower-div {
+            position: absolute;
+            cursor: pointer;
+        }
+        .flower-img {width: 10%;}
+        .position1 {
+            top: 20%;
+            left: 20%;
+        }
+        .position2 {
+            top: 20%;
+            left: 40%;
+        }
+        .position3 {
+            top: 20%;
+            left: 60%;
+        }
+        .position4 {
+            top: 35%;
+            left: 10%;
+        }
+        .position5 {
+            top: 35%;
+            left: 29%;
+        }
+        .position6 {
+            top: 35%;
+            left: 47%;
+        }
+        .position7 {
+            top: 35%;
+            left: 65%;
+        }
+        .position8 {
+            top: 35%;
+            left: 80%;
+        }
+        .position9 {
+            top: 50%;
+            left: 20%;
+        }
+        .position10 {
+            top: 50%;
+            left: 40%;
+        }
+        .position11 {
+            top: 50%;
+            left: 60%;
+        }
+        .position12 {
+            top: 50%;
+            left: 76%;
+        }
+        .flower-name {
+            vertical-align: middle;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-style: normal;
+        }
+
+    .pagination {
+        display: inline-block;
+    }
+
+    .pagination a {
+        color: black;
+        float: left;
+        padding: 8px 16px;
+        text-decoration: none;
+    }
+
+    .pagination a.active {
+        background-color: #4CAF50;
+        color: white;
+    }
+    </style>
+    </head>
+    <body>
+
+    <image src="image/wedding.jpg" style="width: 100%">
+    <div style="text-align: center;">
+        <h1>결혼 축하 글을 남겨 꽃을 달아주세요!</h1>
+    </div>
+    <div style="position: relative; width: 100%;" id="tree" ref="tree">
+        <img src="image/tree.jpg" style="width: 100%;">
+
+        <div v-for="(comment, index) in comments" v-if="flowerShow" class="flower-div" :class="getPosition(index)" @click="showComment(comment)">
+            <img :src="getImageFlower()" :class="{'flower-img': index === 0}" :style="{ width: flowerWidth }">
+            <div class="flower-name" style="font-size:large">[[ comment.name ]]</div>
+            
+        </div>
+
+
+        <div style="border-radius: 10px; position:absolute; top:40%; width:100%; color: white; text-align: center; background-color: rgb(214, 157, 157);" v-if="canShow || cantShow">
+            <div style="width: 100%; text-align: right;">
+                <span style="cursor: pointer;" @click="onClose()">닫기&nbsp;</span>
+            </div>
+            <span v-if="canShow">
+                [[ nowComment ]]
+            </span>
+            <span v-if="cantShow">
+                비밀글이므로 관리자만 확인이 가능합니다.
+            </span>
+            <br>
+            <br>
+        </div>
+
+        <div style="width: 100%; text-align:center;">
+            <div class="pagination">
+                <a href="#" @click="prevPages()">&laquo;</a>
+                <a v-for="page in commentsPagination.limit" :class="{'active': page == commentsPagination.page}"
+                @click="getComments(page)" v-if="page + nowPages <= commentsPagination.total_pages">
+                    [[page + nowPages]]
+                </a>
+                <a href="#" @click="nextPages()">&raquo;</a>
+        
+        
+            </div>
+        </div>
+
+    </div>
+    
+    <div id="comment-body">
+        <!-- Comment form-->
+        <form class="mb-4">
+            <div>
+                이름 <input v-model="name"> 비밀글 <input type="checkbox" v-model="isPrivate"> 
+                <span v-if="isPrivate">비밀번호 <input v-model="password"></span>
+            </div>
+            <br>
+            <textarea v-model="comment" class="form-control" rows="3" style="width:80%" placeholder="댓글을 남겨 결혼을 축하해주세요!"></textarea>
+            <br><br>
+            <span @click="postComment()" style="border-radius: 5px; cursor: pointer; background-color: rgb(27, 68, 70); color: white;">작성</span>
+        </form>
+        
+    </div>
+
+
+    </body>
+    <script>
+        
+        var postCommentVue = new Vue({
+            el: "#comment-body",
+            delimiters: ['[[', ']]'],
+            data: {
+                name: "",
+                password: '',
+                isPrivate: false,
+                comment: "",
+            },
+            methods: {
+                test: function() {
+                    console.log(this.$refs.test)
+                },
+                postComment: function() {
+                    axios.post(`/comment`, {
+                        name: this.name,
+                        is_private: this.isPrivate,
+                        password: this.password,
+                        comment: this.comment
+                    }).then((response)=> {
+                        if (commentVue.comments.length >= commentVue.commentsPagination.limit) {
+                            commentVue.comments.splice(commentVue.comments.length - 1, 1)
+                        }
+                        commentVue.comments.unshift(JSON.parse(response.data["comment"]))
+                        this.name = ""
+                        this.password = ""
+                        this.isPrivate = false
+                        this.comment = ""
+                    })
+                }
+            },
+            watch: {
+                isPrivate: function(val) {
+                    console.log(val)
+                }
+            }
+        })
+
+
+        var commentVue = new Vue({
+            el: "#tree",
+            delimiters: ['[[', ']]'],
+            data: {
+                admin: {{.admin}},
+                password: false,
+                isPrivate: false,
+                flowerShow: false,
+                commentsPagination: JSON.parse({{.comments}}),
+                comments: JSON.parse({{.comments}})["rows"],
+                // comments: ["dsfsd"],
+                nowPages: 0,
+                flowerWidth: '0%',
+                canShow: false,
+                cantShow: false,
+                nowComment: "",
+            },
+            computed: {
+                // comments: function() {
+                //     return {{.comments}}
+                // }
+            },
+            methods: {
+                test: function() {
+                    console.log(this.$refs.flowerRef1)
+                    console.log(this.commentsPagination)
+                    return this.$refs.test
+                },
+                getPosition: function(index) {
+                    return "position" + (index + 1)
+                },
+                getImageFlower: function() {
+                    // console.log("flower" + (Math.floor(Math.random() * (5 - 1)) + 1) + ".png")
+                    return "image/flower" + (Math.floor(Math.random() * (5 - 1)) + 1) + ".png";
+                },
+                showComment: function(comment) {
+                    if (comment.is_private && !this.admin) {
+                        this.cantShow = true
+                        this.canShow = false
+                    } else {
+                        this.canShow = true
+                        this.cantShow = false
+                        this.nowComment = comment.comment
+                    }
+                },
+                getComments: function (page) {
+                    axios.get(`/comment`, {
+                        params:{
+                            page: page
+                        }
+                    }).then((response)=> {
+                        console.log(response.data)
+                        this.commentsPagination = JSON.parse(response.data["comments"])
+                        this.comments = this.commentsPagination["rows"]
+                        console.log(this.commentsPagination["rows"])
+                    })
+                },
+                onClose: function() {
+                    this.canShow = false
+                    this.cantShow = false
+                },
+                prevPages: function() {
+                    if (this.nowPages <= 0) {
+                        // return
+                    } else {
+                        this.nowPages -= 1
+                    }
+                },
+                nextPages: function() {
+                    if (this.nowPages + this.commentsPagination.limit >= this.commentsPagination.total_pages) {
+                        // return
+                    } else {
+                        this.nowPages += 1
+                    }
+                }
+            },
+            async mounted () {
+                // this.comments = this.commentsPagination["rows"]
+                await this.$nextTick()
+                this.flowerShow = true
+                // console.log(this.commentsPagination["rows"])
+                this.flowerWidth = this.$refs.tree.clientHeight / 10
+            },
+            watch: {
+                isPrivate: function(val) {
+                    console.log(val)
+                },
+                comments: function(val) {
+                    console.log(val)
+                    console.log("testsets")
+                }
+                // commentsPagination: function(val) {
+                //     console.log("test")
+                //     console.log(val)
+                // }
+            }
+        })
+
+
+        window.addEventListener('resize', function() {
+            commentVue.flowerWidth = commentVue.$refs.tree.clientHeight / 10
+        })
+    </script>
+</html>
